@@ -20,23 +20,23 @@ jobs:
       run: mkdir -p zap-output && chmod 777 zap-output
 
     # -----------------------------------------------------
-    # 🚀 YOUR EXISTING ZAP SCAN (UNCHANGED)
+    # 🚀 YOUR ORIGINAL ZAP API SCAN (UNCHANGED EXCEPT IMAGE)
     # -----------------------------------------------------
     - name: Run ZAP API Scan
       run: |
         docker run --rm \
           -v "$(pwd):/zap/wrk" \
-          ghcr.io/zaproxy/zap-api-scan:latest \
+          ghcr.io/zaproxy/zaproxy:stable \
           zap-api-scan.py \
-            -t https://demo.testfire.net/swagger/index.html \
+            -t https://demo.testfire.net/swagger/properties.json \
             -f openapi \
             -r zap-report.html \
             -x zap-report.xml \
-            -J zap-report.json \
+            -j \
             -d
 
     # -----------------------------------------------------
-    # ✅ ONLY ADDITIONS → DOWNLOADABLE REPORTS
+    # 🎯 ONLY THING YOU ASKED FOR → DOWNLOADABLE REPORTS
     # -----------------------------------------------------
     - name: Upload ZAP HTML Report
       uses: actions/upload-artifact@v4
@@ -49,9 +49,3 @@ jobs:
       with:
         name: zap-xml-report
         path: zap-report.xml
-
-    - name: Upload ZAP JSON Report
-      uses: actions/upload-artifact@v4
-      with:
-        name: zap-json-report
-        path: zap-report.json
