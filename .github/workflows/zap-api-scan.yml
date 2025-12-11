@@ -15,17 +15,17 @@ jobs:
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/zap/wrk \
-            -t owasp/zap2docker-api-scan:latest \
-            -t https://demo.testfire.net/swagger/v2/swagger.json \
+            -t owasp/zap2docker-stable \
+            zap-api-scan.py \
+            -t https://demo.testfire.net/swagger/properties.json \
             -f openapi \
             -r zap_report.html \
             -w zap_report.md \
             -x zap_report.xml \
             -J zap_report.json \
             -d \
-            -a \
-            -z "-config ajaxSpider.browserId=firefox -config scanner.threadPerHost=5 -config spider.thread=5"
-      
+            -a
+
       - name: Upload HTML Report
         uses: actions/upload-artifact@v4
         with:
