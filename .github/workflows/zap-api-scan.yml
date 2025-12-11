@@ -1,0 +1,53 @@
+name: zap-api-scan
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  zap-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start OWASP ZAP (daemon)
+        run: |
+          docker run -d --name zap -u zap -p 8080:8080 owasp/zap2docker-stable \
+            zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true
+      - name: Wait for ZAP API
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:8080/ >/dev/null 2>&1; then
+              echo "ZAP ready"; break
+            fi
+            sleep 2
+          done
+
+      - name: Run ZAP API Scan (OpenAPI)
+        # Run zap-api-scan.py inside the container. It imports the OpenAPI and actively scans.
+        run: |
+          docker exec zap python3 /zap/zap-api-scan.py \
+            -t "https://demo.testfire.net/swagger/properties.json" \
+            -f openapi \
+            -r /zap/reports/zap_report.html \
+            -w /zap/reports/zap_report.json \
+            -m 120
+
+      - name: Copy report to runner
+        run: |
+          docker cp zap:/zap/reports/zap_report.html ./zap_report.html || true
+          docker cp zap:/zap/reports/zap_report.json ./zap_report.json || true
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-reports
+          path: |
+            zap_report.html
+            zap_report.json
+
+      - name: Stop and remove ZAP container
+        run: |
+          docker rm -f zap || true
