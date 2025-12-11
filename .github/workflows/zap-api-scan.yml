@@ -14,20 +14,38 @@ jobs:
       - name: Run ZAP API Scan
         run: |
           docker run --rm \
-            -v "${{ github.workspace }}:/zap/wrk" \
-            ghcr.io/zaproxy/zaproxy:stable \
-            zap-api-scan.py \
-            -t https://demo.testfire.net/swagger/properties.json \
+            -v ${{ github.workspace }}:/zap/wrk \
+            -t owasp/zap2docker-api-scan:latest \
+            -t https://demo.testfire.net/swagger/v2/swagger.json \
             -f openapi \
-            -r zap-report.html \
-            -x zap-report.xml \
-            -J zap-report.json
-
-      - name: Upload ZAP Reports
+            -r zap_report.html \
+            -w zap_report.md \
+            -x zap_report.xml \
+            -J zap_report.json \
+            -d \
+            -a \
+            -z "-config ajaxSpider.browserId=firefox -config scanner.threadPerHost=5 -config spider.thread=5"
+      
+      - name: Upload HTML Report
         uses: actions/upload-artifact@v4
         with:
-          name: zap-reports
-          path: |
-            zap-report.html
-            zap-report.xml
-            zap-report.json
+          name: ZAP-HTML-Report
+          path: zap_report.html
+
+      - name: Upload XML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZAP-XML-Report
+          path: zap_report.xml
+
+      - name: Upload JSON Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZAP-JSON-Report
+          path: zap_report.json
+
+      - name: Upload Markdown Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZAP-MD-Report
+          path: zap_report.md
