@@ -1,25 +1,20 @@
-name: ZAP API Scan (POST Requests Included)
+name: ZAP API Scan
 
 on:
   workflow_dispatch:
-  push:
-  pull_request:
 
 jobs:
   zap-api-scan:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Fix workspace permissions
-        run: chmod -R 777 .
+      - name: Create output directory
+        run: mkdir -p zap-output
 
-      - name: Create output folder
-        run: mkdir -p zap-output && chmod 777 zap-output
-
-      - name: Run ZAP API Scan (executes POSTs from OpenAPI)
+      - name: Run ZAP API Scan (OpenAPI + POSTs)
         run: |
           docker run --rm \
             -v "$(pwd)":/zap/wrk \
@@ -27,34 +22,20 @@ jobs:
             python3 /zap/zap-api-scan.py \
               -t "https://demo.testfire.net/swagger/properties.json" \
               -f openapi \
-              -r /zap/wrk/zap-output/zap-report.html \
-              -x /zap/wrk/zap-output/zap-report.xml \
-              -J /zap/wrk/zap-output/zap-report.json \
-              -w /zap/wrk/zap-output/zap-report.md \
               -d \
-              -a \
-              -z "-addonupdate -config api.disablekey=true"
+              -I \
+              -c /zap/wrk/.zap/zap-ignore.conf \
+              -r /zap/wrk/zap-output/zap-report.html \
+              -J /zap/wrk/zap-output/zap-report.json
 
-      - name: Upload HTML Report
+      - name: Upload ZAP HTML Report
         uses: actions/upload-artifact@v4
         with:
           name: zap-html-report
           path: zap-output/zap-report.html
 
-      - name: Upload XML Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-xml-report
-          path: zap-output/zap-report.xml
-
-      - name: Upload JSON Report
+      - name: Upload ZAP JSON Report
         uses: actions/upload-artifact@v4
         with:
           name: zap-json-report
           path: zap-output/zap-report.json
-
-      - name: Upload Markdown Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-md-report
-          path: zap-output/zap-report.md
