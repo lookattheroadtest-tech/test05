@@ -12,21 +12,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Start OWASP ZAP (daemon)
+      - name: Pull ZAP image
+        run: docker pull ghcr.io/zaproxy/zaproxy:stable
+
+      - name: Start ZAP (daemon)
         run: |
-          docker run -d --name zap -u zap -p 8080:8080 owasp/zap2docker-stable \
+          docker run -d --name zap -u zap -p 8080:8080 ghcr.io/zaproxy/zaproxy:stable \
             zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true
+
       - name: Wait for ZAP API
         run: |
           for i in {1..30}; do
-            if curl -s http://localhost:8080/ >/dev/null 2>&1; then
+            if curl -sS http://localhost:8080/ >/dev/null 2>&1; then
               echo "ZAP ready"; break
             fi
             sleep 2
           done
 
       - name: Run ZAP API Scan (OpenAPI)
-        # Run zap-api-scan.py inside the container. It imports the OpenAPI and actively scans.
         run: |
           docker exec zap python3 /zap/zap-api-scan.py \
             -t "https://demo.testfire.net/swagger/properties.json" \
@@ -35,12 +38,12 @@ jobs:
             -w /zap/reports/zap_report.json \
             -m 120
 
-      - name: Copy report to runner
+      - name: Copy reports to runner
         run: |
           docker cp zap:/zap/reports/zap_report.html ./zap_report.html || true
           docker cp zap:/zap/reports/zap_report.json ./zap_report.json || true
 
-      - name: Upload report artifact
+      - name: Upload reports
         uses: actions/upload-artifact@v4
         with:
           name: zap-reports
@@ -49,5 +52,4 @@ jobs:
             zap_report.json
 
       - name: Stop and remove ZAP container
-        run: |
-          docker rm -f zap || true
+        run: docker rm -f zap || true
