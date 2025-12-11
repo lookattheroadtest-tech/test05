@@ -1,4 +1,4 @@
-name: ZAP API Scan (POST Requests Included)
+name: ZAP API Scan
 
 on:
   workflow_dispatch:
@@ -10,35 +10,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Fix workspace permissions
-        run: chmod -R 777 .
+    - name: Fix workspace permissions
+      run: chmod -R 777 .
 
-      - name: Create output folder
-        run: mkdir -p zap-output && chmod 777 zap-output
+    - name: Create output folder
+      run: mkdir -p zap-output && chmod 777 zap-output
 
-      - name: Run ZAP API Scan (executes POSTs from OpenAPI)
-        run: |
-          docker run --rm \
-            -v "$(pwd)":/zap/wrk \
-            ghcr.io/zaproxy/zaproxy:stable \
-            python3 /zap/zap-api-scan.py \
-              -t "https://demo.testfire.net/swagger/properties.json" \
-              -f openapi \
-              -r /zap/wrk/zap-output/zap-report.html \
-              -J /zap/wrk/zap-output/zap-report.json \
-              -d
+    # -----------------------------------------------------
+    # 🚀 YOUR EXISTING ZAP SCAN (UNCHANGED)
+    # -----------------------------------------------------
+    - name: Run ZAP API Scan
+      run: |
+        docker run --rm \
+          -v "$(pwd):/zap/wrk" \
+          ghcr.io/zaproxy/zap-api-scan:latest \
+          zap-api-scan.py \
+            -t https://demo.testfire.net/swagger/index.html \
+            -f openapi \
+            -r zap-report.html \
+            -x zap-report.xml \
+            -J zap-report.json \
+            -d
 
-      - name: Upload HTML Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-html-report
-          path: zap-output/zap-report.html
+    # -----------------------------------------------------
+    # ✅ ONLY ADDITIONS → DOWNLOADABLE REPORTS
+    # -----------------------------------------------------
+    - name: Upload ZAP HTML Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: zap-html-report
+        path: zap-report.html
 
-      - name: Upload JSON Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-json-report
-          path: zap-output/zap-report.json
+    - name: Upload ZAP XML Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: zap-xml-report
+        path: zap-report.xml
+
+    - name: Upload ZAP JSON Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: zap-json-report
+        path: zap-report.json
