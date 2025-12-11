@@ -11,7 +11,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      # REQUIRED — correct image (only change needed)
       - name: Pull ZAP API Scan Image
         run: docker pull ghcr.io/zaproxy/zap-api-scan:latest
 
@@ -47,13 +46,15 @@ jobs:
             -d
 
       - name: Upload HTML Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4      # <-- FIXED
+
         with:
           name: zap-html-report
           path: zap-report.html
 
       - name: Upload JSON Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4      # <-- FIXED
+
         with:
           name: zap-json-report
           path: zap-report.json
