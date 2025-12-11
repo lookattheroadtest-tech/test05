@@ -1,7 +1,9 @@
-name: ZAP API Scan
+name: ZAP API Scan (POST Requests Included)
 
 on:
   workflow_dispatch:
+  push:
+  pull_request:
 
 jobs:
   zap-api-scan:
@@ -11,41 +13,48 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run ZAP API Scan
+      - name: Fix workspace permissions
+        run: chmod -R 777 .
+
+      - name: Create output folder
+        run: mkdir -p zap-output && chmod 777 zap-output
+
+      - name: Run ZAP API Scan (executes POSTs from OpenAPI)
         run: |
           docker run --rm \
-            -v ${{ github.workspace }}:/zap/wrk \
-            -t owasp/zap2docker-stable \
-            zap-api-scan.py \
-            -t https://demo.testfire.net/swagger/properties.json \
-            -f openapi \
-            -r zap_report.html \
-            -w zap_report.md \
-            -x zap_report.xml \
-            -J zap_report.json \
-            -d \
-            -a
+            -v "$(pwd)":/zap/wrk \
+            ghcr.io/zaproxy/zaproxy:stable \
+            python3 /zap/zap-api-scan.py \
+              -t "https://demo.testfire.net/swagger/properties.json" \
+              -f openapi \
+              -r /zap/wrk/zap-output/zap-report.html \
+              -x /zap/wrk/zap-output/zap-report.xml \
+              -J /zap/wrk/zap-output/zap-report.json \
+              -w /zap/wrk/zap-output/zap-report.md \
+              -d \
+              -a \
+              -z "-addonupdate -config api.disablekey=true"
 
       - name: Upload HTML Report
         uses: actions/upload-artifact@v4
         with:
-          name: ZAP-HTML-Report
-          path: zap_report.html
+          name: zap-html-report
+          path: zap-output/zap-report.html
 
       - name: Upload XML Report
         uses: actions/upload-artifact@v4
         with:
-          name: ZAP-XML-Report
-          path: zap_report.xml
+          name: zap-xml-report
+          path: zap-output/zap-report.xml
 
       - name: Upload JSON Report
         uses: actions/upload-artifact@v4
         with:
-          name: ZAP-JSON-Report
-          path: zap_report.json
+          name: zap-json-report
+          path: zap-output/zap-report.json
 
       - name: Upload Markdown Report
         uses: actions/upload-artifact@v4
         with:
-          name: ZAP-MD-Report
-          path: zap_report.md
+          name: zap-md-report
+          path: zap-output/zap-report.md
