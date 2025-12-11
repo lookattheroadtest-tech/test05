@@ -11,8 +11,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Pull ZAP API Scan Image
-        run: docker pull ghcr.io/zaproxy/zap-api-scan:latest
+      # CORRECT image that actually exists
+      - name: Pull ZAP Image
+        run: docker pull ghcr.io/zaproxy/zaproxy:stable
 
       - name: Start ZAP
         run: |
@@ -20,7 +21,7 @@ jobs:
             -u zap \
             -p 8080:8080 \
             -v ${{ github.workspace }}:/zap/wrk \
-            ghcr.io/zaproxy/zap-api-scan:latest
+            ghcr.io/zaproxy/zaproxy:stable
 
       - name: Wait for ZAP to be ready
         run: |
@@ -46,15 +47,13 @@ jobs:
             -d
 
       - name: Upload HTML Report
-        uses: actions/upload-artifact@v4      # <-- FIXED
-
+        uses: actions/upload-artifact@v4
         with:
           name: zap-html-report
           path: zap-report.html
 
       - name: Upload JSON Report
-        uses: actions/upload-artifact@v4      # <-- FIXED
-
+        uses: actions/upload-artifact@v4
         with:
           name: zap-json-report
           path: zap-report.json
