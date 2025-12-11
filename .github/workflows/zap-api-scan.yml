@@ -2,54 +2,55 @@ name: zap-api-scan
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
 
 jobs:
   zap-scan:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
-      - name: Pull ZAP image
-        run: docker pull ghcr.io/zaproxy/zaproxy:stable
+    - name: Pull ZAP image
+      run: docker pull ghcr.io/zaproxy/zaproxy:stable
 
-      - name: Start ZAP (daemon)
-        run: |
-          docker run -d --name zap -u zap -p 8080:8080 ghcr.io/zaproxy/zaproxy:stable \
-            zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true
+    - name: Start ZAP daemon
+      run: |
+        docker run -d --name zap \
+          -u zap \
+          -p 8080:8080 \
+          -v $(pwd):/zap/wrk \
+          ghcr.io/zaproxy/zaproxy:stable \
+          zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true
 
-      - name: Wait for ZAP API
-        run: |
-          for i in {1..30}; do
-            if curl -sS http://localhost:8080/ >/dev/null 2>&1; then
-              echo "ZAP ready"; break
-            fi
-            sleep 2
-          done
+    - name: Wait for ZAP to be ready
+      run: |
+        echo "Waiting for ZAP..."
+        for i in {1..90}; do
+          if curl -s http://localhost:8080/JSON/core/view/version/ >/dev/null; then
+            echo "ZAP is ready!"
+            break
+          fi
+          echo "Still starting... ($i/90)"
+          sleep 2
+        done
 
-      - name: Run ZAP API Scan (OpenAPI)
-        run: |
-          docker exec zap python3 /zap/zap-api-scan.py \
-            -t "https://demo.testfire.net/swagger/properties.json" \
-            -f openapi \
-            -r /zap/reports/zap_report.html \
-            -w /zap/reports/zap_report.json \
-            -m 120
+    - name: Run ZAP API Scan
+      run: |
+        docker exec zap python3 /zap/zap-api-scan.py \
+          -t "https://demo.testfire.net/swagger/properties.json" \
+          -f openapi \
+          -r zap_report.html \
+          -J zap_report.json \
+          -m 60
 
-      - name: Copy reports to runner
-        run: |
-          docker cp zap:/zap/reports/zap_report.html ./zap_report.html || true
-          docker cp zap:/zap/reports/zap_report.json ./zap_report.json || true
+    - name: Upload Reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: zap-reports
+        path: |
+          zap_report.html
+          zap_report.json
 
-      - name: Upload reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-reports
-          path: |
-            zap_report.html
-            zap_report.json
-
-      - name: Stop and remove ZAP container
-        run: docker rm -f zap || true
+    - name: Cleanup
+      run: docker rm -f zap || true
