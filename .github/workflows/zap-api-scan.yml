@@ -11,49 +11,49 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      # CORRECT image that actually exists
-      - name: Pull ZAP Image
+      - name: Pull ZAP stable image (verified)
         run: docker pull ghcr.io/zaproxy/zaproxy:stable
 
-      - name: Start ZAP
+      - name: Start ZAP container (mount workspace -> /zap/wrk)
         run: |
           docker run -d --name zap \
             -u zap \
             -p 8080:8080 \
             -v ${{ github.workspace }}:/zap/wrk \
-            ghcr.io/zaproxy/zaproxy:stable
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true
 
-      - name: Wait for ZAP to be ready
+      - name: Wait for ZAP API to respond
         run: |
           echo "Waiting for ZAP..."
           for i in {1..90}; do
-            if curl -s http://localhost:8080/JSON/core/view/version/ > /dev/null; then
-              echo "ZAP is ready!"
-              exit 0
+            if curl -s http://localhost:8080/JSON/core/view/version/ >/dev/null 2>&1; then
+              echo "ZAP ready"; break
             fi
-            echo "Still starting... ($i/90)"
-            sleep 2
+            echo "Still starting... ($i/90)"; sleep 2
           done
-          echo "ZAP failed to start in time"
-          exit 1
 
-      - name: Run API Scan
+      - name: Run ZAP API scan (imports OpenAPI, will execute POST requests)
         run: |
           docker exec zap python3 /zap/zap-api-scan.py \
-            -t https://demo.testfire.net/swagger/properties.json \
+            -t "https://demo.testfire.net/swagger/properties.json" \
             -f openapi \
             -r zap-report.html \
             -J zap-report.json \
             -d
 
-      - name: Upload HTML Report
+      - name: Upload HTML report
         uses: actions/upload-artifact@v4
         with:
           name: zap-html-report
           path: zap-report.html
 
-      - name: Upload JSON Report
+      - name: Upload JSON report
         uses: actions/upload-artifact@v4
         with:
           name: zap-json-report
           path: zap-report.json
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f zap || true
