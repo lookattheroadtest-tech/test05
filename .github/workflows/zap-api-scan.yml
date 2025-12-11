@@ -1,59 +1,44 @@
-name: zap-api-scan
+name: ZAP API Scan (POST Requests Included)
 
 on:
   workflow_dispatch:
+  push:
+  pull_request:
 
 jobs:
-  zap-scan:
+  zap-api-scan:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Pull ZAP stable image (verified)
-        run: docker pull ghcr.io/zaproxy/zaproxy:stable
+      - name: Fix workspace permissions
+        run: chmod -R 777 .
 
-      - name: Start ZAP container (mount workspace -> /zap/wrk)
+      - name: Create output folder
+        run: mkdir -p zap-output && chmod 777 zap-output
+
+      - name: Run ZAP API Scan (executes POSTs from OpenAPI)
         run: |
-          docker run -d --name zap \
-            -u zap \
-            -p 8080:8080 \
-            -v ${{ github.workspace }}:/zap/wrk \
+          docker run --rm \
+            -v "$(pwd)":/zap/wrk \
             ghcr.io/zaproxy/zaproxy:stable \
-            zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.disablekey=true
+            python3 /zap/zap-api-scan.py \
+              -t "https://demo.testfire.net/swagger/properties.json" \
+              -f openapi \
+              -r /zap/wrk/zap-output/zap-report.html \
+              -J /zap/wrk/zap-output/zap-report.json \
+              -d
 
-      - name: Wait for ZAP API to respond
-        run: |
-          echo "Waiting for ZAP..."
-          for i in {1..90}; do
-            if curl -s http://localhost:8080/JSON/core/view/version/ >/dev/null 2>&1; then
-              echo "ZAP ready"; break
-            fi
-            echo "Still starting... ($i/90)"; sleep 2
-          done
-
-      - name: Run ZAP API scan (imports OpenAPI, will execute POST requests)
-        run: |
-          docker exec zap python3 /zap/zap-api-scan.py \
-            -t "https://demo.testfire.net/swagger/properties.json" \
-            -f openapi \
-            -r zap-report.html \
-            -J zap-report.json \
-            -d
-
-      - name: Upload HTML report
+      - name: Upload HTML Report
         uses: actions/upload-artifact@v4
         with:
           name: zap-html-report
-          path: zap-report.html
+          path: zap-output/zap-report.html
 
-      - name: Upload JSON report
+      - name: Upload JSON Report
         uses: actions/upload-artifact@v4
         with:
           name: zap-json-report
-          path: zap-report.json
-
-      - name: Cleanup
-        if: always()
-        run: docker rm -f zap || true
+          path: zap-output/zap-report.json
