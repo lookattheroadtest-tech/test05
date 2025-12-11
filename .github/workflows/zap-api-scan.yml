@@ -23,7 +23,7 @@ jobs:
               -t "https://demo.testfire.net/swagger/properties.json" \
               -f openapi \
               -d \
-              --exit-code-pass \
+              -I \
               -r /zap/wrk/zap-output/zap-report.html \
               -J /zap/wrk/zap-output/zap-report.json
 
