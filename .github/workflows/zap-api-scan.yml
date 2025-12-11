@@ -19,10 +19,7 @@ jobs:
     - name: Create output folder
       run: mkdir -p zap-output && chmod 777 zap-output
 
-    # -----------------------------------------------------
-    # 🚀 YOUR ORIGINAL ZAP API SCAN (UNCHANGED EXCEPT IMAGE)
-    # -----------------------------------------------------
-    - name: Run ZAP API Scan
+    - name: Run ZAP API Scan (POST Requests Included)
       run: |
         docker run --rm \
           -v "$(pwd):/zap/wrk" \
@@ -33,11 +30,9 @@ jobs:
             -r zap-report.html \
             -x zap-report.xml \
             -j \
-            -d
+            -d \
+            -e False
 
-    # -----------------------------------------------------
-    # 🎯 ONLY THING YOU ASKED FOR → DOWNLOADABLE REPORTS
-    # -----------------------------------------------------
     - name: Upload ZAP HTML Report
       uses: actions/upload-artifact@v4
       with:
